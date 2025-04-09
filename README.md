@@ -8,8 +8,10 @@ Topics discussed in course:
 - Key-word spotting (KWS)
 - Text-to-Speech (TTS)
 - Voice Conversion
-- Unsupervised learning in Audio
-- SOTA Audio Generation with NNs
+- Self supervised learning in Audio
+- LLM-based Audio Generation
+- Music & Audio Generation
+- Speaker verification
 
 ## Course materials
 ## Materials
@@ -28,11 +30,11 @@ Topics discussed in course:
 |  | <b>Seminar:</b> |  Text-to-speech: Tacotron2                                          | [notebook](seminars/seminar05/seminar5.ipynb) |
 | 6 | <b>Lecture:</b> |  Text-to-speech 2: Neural Vocoders (PWGAN, DiffWave, Glow-TTS, Hi-Fi GAN, VITS) | [slides](lectures/lecture06_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b> | Wavenet   | [notebook](seminars/seminar06/seminar6.ipynb) |
-| 7 | <b>Lecture:</b>  | Self-supervised learning in Audio (wav2vec2, HuBERT, W2V-BERT) | [slides](lectures/lecture07_DLAudio2025.pdf)  |
+| 7 | <b>Lecture:</b>  | Voice Conversion: CycleGAN-VC, StarGAN-VC, AutoVC, Singing Voice Conversion | [slides](lectures/lecture07_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b> | VAE Wavenet Vocoder, Normalizing Flow | [notebook](seminars/seminar07/seminar7.ipynb) |
-| 8 | <b>Lecture:</b>    | Text-to-speech 3: Audio compression, VALL-E, XTTS, SpeechGPT, SpearTTS, MQTTS| [slides](lectures/lecture08_DLAudio2025.pdf)  |
+| 8 | <b>Lecture:</b>    | Self-supervised learning in Audio (wav2vec2, HuBERT, W2V-BERT) | [slides](lectures/lecture08_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b>  | HIFI-GAN | [notebook](seminars/seminar08/seminar8.ipynb) |
-| 9 | <b>Lecture:</b> | Voice Conversion: AutoVC, CycleGAN-VC, StarGAN-VC | [slides](lectures/lecture09_DLAudio2025.pdf)  |
+| 9 | <b>Lecture:</b> | Text-to-speech 3: Audio compression, VALL-E, XTTS, SpeechGPT, SpearTTS, MQTTS | [slides](lectures/lecture09_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b> |  | [notebook](seminars/seminar09/seminar.ipynb)  |
 | 10 | <b>Lecture:</b> | Speaker verification and identification | [slides](lectures/lecture10_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b> | Speaker verification | [notebook](seminars/seminar10/seminar.ipynb)  |
