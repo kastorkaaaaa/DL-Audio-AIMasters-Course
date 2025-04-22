@@ -34,11 +34,11 @@ Topics discussed in course:
 |  | <b>Seminar:</b> | VAE Wavenet Vocoder, Normalizing Flow | [notebook](seminars/seminar07/seminar7.ipynb) |
 | 8 | <b>Lecture:</b>    | Self-supervised learning in Audio (wav2vec2, HuBERT, W2V-BERT) | [slides](lectures/lecture08_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b>  | HIFI-GAN | [notebook](seminars/seminar08/seminar8.ipynb) |
-| 9 | <b>Lecture:</b> | Text-to-speech 3: Audio compression, VALL-E, XTTS, SpeechGPT, SpearTTS, MQTTS | [slides](lectures/lecture09_DLAudio2025.pdf)  |
-|  | <b>Seminar:</b> |  | [notebook](seminars/seminar09/seminar.ipynb)  |
-| 10 | <b>Lecture:</b> | Speaker verification and identification | [slides](lectures/lecture10_DLAudio2025.pdf)  |
-|  | <b>Seminar:</b> | Speaker verification | [notebook](seminars/seminar10/seminar.ipynb)  |
-| 11 | <b>Lecture:</b> | Audio & Music Generation: Jukebox, Diffsound, AudioLM, AudioCraft, SOTA TTS Fish-Speech | [slides](lectures/lecture11_DLAudio2025.pdf)  |
+| 9 | <b>Lecture:</b> | Speaker verification and identification | [slides](lectures/lecture09_DLAudio2025.pdf)  |
+|  | <b>Seminar:</b> | Speaker verification | [notebook](seminars/seminar09/seminar.ipynb)  |
+| 10 | <b>Lecture:</b> | LLM-based Audio models: VALL-E, XTTS, SpeechGPT, SpearTTS, MQTTS, Fish-Speech | [slides](lectures/lecture10_DLAudio2025.pdf)  |
+|  | <b>Seminar:</b> | TBA | [notebook](seminars/seminar10/seminar.ipynb)  |
+| 11 | <b>Lecture:</b> | Audio & Music Generation: Jukebox, Diffsound, AudioLM, AudioCraft | [slides](lectures/lecture11_DLAudio2025.pdf)  |
 
 
 ## Homeworks
