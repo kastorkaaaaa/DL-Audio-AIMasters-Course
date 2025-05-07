@@ -38,7 +38,9 @@ Topics discussed in course:
 |  | <b>Seminar:</b> | Speaker verification | [notebook](seminars/seminar09/seminar.ipynb)  |
 | 10 | <b>Lecture:</b> | LLM-based audio models: SEED-ASR, Llama3, Phi4, Codec Models (Encodec, Mimi), VALL-E, SpeechGPT, Mini-Omni, Llama-Omni, Moshi | [slides](lectures/lecture10_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b> | Encodec | [notebook](seminars/seminar10/seminar.ipynb)  |
-| 11 | <b>Lecture:</b> | Audio & Music Generation: Jukebox, Diffsound, AudioLM, AudioCraft (optional: FishSpeech, XTTS, SpearTTS, MQTTS) | [slides](lectures/lecture11_DLAudio2025.pdf)  |
+| 11 | <b>Lecture:</b> | Audio & Music Generation: Jukebox, Diffusion models (Diffsound, Riffusion, Noise2Music), AudioLM & MusicLM, AudioGen & MusicGen, MeLoDy, YuE, Music Agents | [slides](lectures/lecture11_DLAudio2025.pdf)  |
+|  | <b>Seminar:</b> | VITS | [notebook](seminars/seminar10/seminar.ipynb)  |
+| TBD | <b>Lecture:</b> | FishSpeech, XTTS, SpearTTS, MQTTS |  |
 
 
 ## Homeworks
