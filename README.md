@@ -35,11 +35,11 @@ Topics discussed in course:
 | 8 | <b>Lecture:</b>    | Self-supervised learning in Audio (wav2vec2, GigaAM, HuBERT, BEST-RQ) | [slides](lectures/lecture08_DLAudio2025.pdf)  |
 |  | <b>Seminar:</b>  | HIFI-GAN | [notebook](seminars/seminar08/seminar8.ipynb) |
 | 9 | <b>Lecture:</b> | Speaker verification and identification | [slides](lectures/lecture09_DLAudio2025.pdf)  |
-|  | <b>Seminar:</b> | Speaker verification | [notebook](seminars/seminar09/seminar.ipynb)  |
+|  | <b>Seminar:</b> | Speaker verification, Angular Softmax, Margin Softmax | [notebook](seminars/seminar09/seminar.ipynb)  |
 | 10 | <b>Lecture:</b> | LLM-based audio models: SEED-ASR, Llama3, Phi4, Codec Models (Encodec, Mimi), VALL-E, SpeechGPT, Mini-Omni, Llama-Omni, Moshi | [slides](lectures/lecture10_DLAudio2025.pdf)  |
-|  | <b>Seminar:</b> | Encodec | [notebook](seminars/seminar10/seminar.ipynb)  |
+|  | <b>Seminar:</b> | Encodec, Soundstream, Residual Vector Quantization | [notebook](seminars/seminar10/seminar.ipynb)  |
 | 11 | <b>Lecture:</b> | Audio & Music Generation: Jukebox, Diffusion models (Diffsound, Riffusion, Noise2Music), AudioLM & MusicLM, AudioGen & MusicGen, MeLoDy, YuE, Music Agents | [slides](lectures/lecture11_DLAudio2025.pdf)  |
-|  | <b>Seminar:</b> | VITS | [notebook](seminars/seminar10/seminar.ipynb)  |
+|  | <b>Seminar:</b> | VITS, Normalizing flows | [notebook](seminars/seminar10/seminar.ipynb)  |
 | TBD | <b>Lecture:</b> | FishSpeech, XTTS, SpearTTS, MQTTS |  |
 
 
