@@ -21,7 +21,7 @@ Topics discussed in course:
 |---------|--------------|---------------------------------------------------------------------------------------------|-----------------------------------------------|
 | 1 | <b>Lecture:</b> | Introduction and Digital Signal Processing                                  | [slides](lectures/lecture01_DLAudio2026.pdf)  |
 |  | <b>Seminar:</b> | Introduction and Spectrograms, Griffin-Lim Algorithm                        | [notebook](seminars/seminar01/seminar1.ipynb) |
-| 2 | <b>Lecture:</b> | Automatic Speech Recognition 1: introduction, CTC, LAS                      | [slides](lectures/lecture02_DLAudio2025.pdf)  |
+| 2 | <b>Lecture:</b> | Automatic Speech Recognition 1: introduction, CTC, LAS                      | [slides](lectures/lecture02_DLAudio2026.pdf)  |
 |  | <b>Seminar:</b> | WER, Levenstein distance, CTC                                               | [notebook](seminars/seminar02/seminar2.ipynb) |
 | 3 | <b>Lecture:</b> | Automatic Speech Recognition 2: RNN-T, Language models in ASR, BPE, Whisper | [slides](lectures/lecture03_DLAudio2026.pdf)  |
 |  | <b>Seminar:</b> | Automatic Speech Recognition 2: RNN-T, Whisper                              | [notebook](seminars/seminar03)                |
@@ -33,9 +33,9 @@ Topics discussed in course:
 |   | <b>Seminar:</b> | Wavenet   | [notebook](seminars/seminar06/seminar6.ipynb) |
 | 7 | <b>Lecture:</b>  | Voice Conversion: CycleGAN-VC, StarGAN-VC, AutoVC, Singing Voice Conversion | [slides](lectures/lecture07_DLAudio2026.pdf)  |
 |   | <b>Seminar:</b> | VAE Wavenet Vocoder, Normalizing Flow | [notebook](seminars/seminar07/seminar7.ipynb) |
-| 8 | <b>Lecture:</b>    | Self-supervised learning in Audio (wav2vec2, GigaAM, HuBERT, BEST-RQ) | [slides](lectures/lecture08_DLAudio2025.pdf)  |
+| 8 | <b>Lecture:</b>    | Self-supervised learning in Audio (wav2vec2, GigaAM, HuBERT, BEST-RQ) | [slides](lectures/lecture08_DLAudio2026.pdf)  |
 |   | <b>Seminar:</b>  | HIFI-GAN | [notebook](seminars/seminar08/seminar8.ipynb) |
-| 9 | <b>Lecture:</b> | Speaker verification and identification | [slides](lectures/lecture09_DLAudio2025.pdf)  |
+| 9 | <b>Lecture:</b> | Speaker verification and identification | [slides](lectures/lecture09_DLAudio2026.pdf)  |
 |   | <b>Seminar:</b> | Speaker verification, Angular Softmax, Margin Softmax | [notebook](seminars/seminar09/seminar.ipynb)  |
 | 10 | <b>Lecture:</b> | Codec Models (RVQ, SoundStream, Encodec, Mimi), VQ-VAE, VALL-E | [slides](lectures/lecture10_DLAudio2026.pdf)  |
 |    | <b>Seminar:</b> | Encodec, Soundstream, Residual Vector Quantization | [notebook](seminars/seminar10/seminar.ipynb)  |
