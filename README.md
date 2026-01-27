@@ -72,14 +72,14 @@ Pavel Severilov
   - Lecturer: AI Masters, MIPT, ex-Deep Learning School
 
 Daniel Knyazev
-- **telegram:** [@Oorgien](https://t.me/daniel_knyazev)
+- **telegram:** [@daniel_knyazev](https://t.me/daniel_knyazev)
 - **e-mail:** xmaximuskn@gmail.com
 - **BIO:** 
   - Education: MIPT
   - Experience: xlabs-ai, Sberdevices
 
 Roman Vlasov
-- **telegram:** @roman_studentin
+- **telegram:** [@roman_studentin](https://t.me/roman_studentin)
 - **e-mail:** vlasovroman2017@gmail.com
 - **BIO:** 
   - Education: MIPT, AI Masters
