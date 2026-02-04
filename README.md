@@ -21,7 +21,7 @@ Topics discussed in course:
 |---------|--------------|---------------------------------------------------------------------------------------------|-----------------------------------------------|
 | 1 | <b>Lecture:</b> | Introduction and Digital Signal Processing                                  | [slides](lectures/lecture01_DLAudio2026.pdf)  |
 |  | <b>Seminar:</b> | Introduction and Spectrograms, Griffin-Lim Algorithm                        | [notebook](seminars/seminar01/seminar1.ipynb) |
-| 2 | <b>Lecture:</b> | Automatic Speech Recognition 1: introduction, CTC, LAS                      | [slides](lectures/lecture02_DLAudio2026.pdf)  |
+| 2 | <b>Lecture:</b> | Automatic Speech Recognition 1: introduction, WER, Datasets, CTC, LAS                      | [slides](lectures/lecture02_DLAudio2026.pdf)  |
 |  | <b>Seminar:</b> | WER, Levenstein distance, CTC                                               | [notebook](seminars/seminar02/seminar2.ipynb) |
 | 3 | <b>Lecture:</b> | Automatic Speech Recognition 2: RNN-T, Language models in ASR, BPE, Whisper | [slides](lectures/lecture03_DLAudio2026.pdf)  |
 |  | <b>Seminar:</b> | Automatic Speech Recognition 2: RNN-T, Whisper                              | [notebook](seminars/seminar03)                |
