@@ -50,10 +50,10 @@ Topics discussed in course:
 | Homework | Date | Deadline | Description | Link |
 |---------|------|-------------|--------|-------|
 | 1 (2 points) | February, 4 | February, 18 (23:59) | <ol><li>Audio classification</li><li>Audio preprocessing</li></ol> | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw1/) |
-| 2 (2 points) | | | ASR-1: CTC | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw2/)  |
+| 2 (2 points) | February, 17 | March, 4 (23:59) | ASR-1: CTC | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw2/)  |
 | 3 (2 points) | | | ASR-2: RNN-T | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw3/)  |
-| 4 (2 points) | | | Text-to-speech: FastPitch  | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw4/)  |
-| 5 (2 points) | | | Speaker Verification  | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw5/)  |
+| 4 (2 points) | | | Speaker Verification  | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw4/)  |
+| 5 (2 points) | | | Text-to-speech: FastPitch  | [![Open In Github](https://img.shields.io/static/v1.svg?logo=github&label=Repo&message=Open%20in%20Github&color=lightgrey)](homework/hw5/)  |
 
 ## Game rules
 - 5 homeworks each of 2 points = **10 points**
