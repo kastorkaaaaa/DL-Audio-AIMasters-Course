@@ -1,4 +1,3 @@
-import math
 from typing import List, Optional, Tuple, Dict
 
 import torch
@@ -6,7 +5,10 @@ from torch import Tensor
 from torch.nn import Module
 from torch import nn
 from torch.nn import functional as F
-from gumbel_softmax import Wav2Vec2GumbelVectorQuantizer
+try:
+    from .gumbel_softmax import Wav2Vec2GumbelVectorQuantizer
+except ImportError:  # pragma: no cover - allows running this file as a script
+    from gumbel_softmax import Wav2Vec2GumbelVectorQuantizer
 
 try:
     from . import components
@@ -172,6 +174,50 @@ class Wav2Vec2PretrainModel(nn.Module):
         self.project_hid = nn.Linear(encoder_embed_dim, proj_codevector_dim)
         self.dropout_features = nn.Dropout(feat_quantizer_dropout)
 
+    def _scale_feature_gradients(self, features: Tensor) -> Tensor:
+        if self.feature_grad_mult is not None and self.feature_grad_mult < 1.0:
+            return features * self.feature_grad_mult + features.detach() * (1 - self.feature_grad_mult)
+        return features
+
+    @staticmethod
+    def _get_attention_mask(features: Tensor, lengths: Optional[Tensor]) -> Optional[Tensor]:
+        if lengths is None:
+            return None
+        batch_size, max_len = features.shape[:2]
+        return torch.arange(max_len, device=lengths.device).expand(batch_size, max_len) < lengths[:, None]
+
+    def _compute_training_losses(
+        self,
+        transformer_features: Tensor,
+        quantized_features: Tensor,
+        codevector_perplexity: Tensor,
+        mask_time_indices: Tensor,
+        attention_mask: Optional[Tensor],
+    ) -> Tuple[Tensor, Tensor, Tensor]:
+        negative_quantized_features = self._sample_negatives(
+            quantized_features, self.num_negatives, attention_mask
+        )
+
+        logits = self.compute_contrastive_logits(
+            quantized_features[None, :],
+            negative_quantized_features,
+            transformer_features,
+            self.contrastive_logits_temperature,
+        )
+
+        neg_is_pos = (quantized_features == negative_quantized_features).all(-1)
+        if neg_is_pos.any():
+            logits[1:][neg_is_pos] = float("-inf")
+
+        preds = logits.transpose(0, 2).reshape(-1, logits.size(0))
+        target = ((1 - mask_time_indices.long()) * -100).transpose(0, 1).flatten()
+        contrastive_loss = F.cross_entropy(preds.float(), target, reduction="sum")
+
+        num_codevectors = self.quantizer.num_groups * self.quantizer.num_vars
+        diversity_loss = (num_codevectors - codevector_perplexity) / num_codevectors
+        total_loss = contrastive_loss + self.diversity_loss_weight * diversity_loss
+        return total_loss, contrastive_loss, diversity_loss
+
     def set_gumbel_temperature(self, temperature: float):
         """Set Gumbel-Softmax temperature for quantizer."""
         self.quantizer.set_temperature(temperature)
@@ -289,27 +335,13 @@ class Wav2Vec2PretrainModel(nn.Module):
                 - projected_quantized_states (Tensor): Projected quantized targets.
                 - codevector_perplexity (Tensor): Codebook usage perplexity.
         """
-        # Extract features
         features, lengths = self.wav2vec2.feature_extractor(waveforms, audio_lengths)
+        features = self._scale_feature_gradients(features)
+        attention_mask = self._get_attention_mask(features, lengths)
 
-        # Apply gradient multiplier for feature extractor
-        if self.feature_grad_mult is not None and self.feature_grad_mult < 1.0:
-            features = features * self.feature_grad_mult + features.detach() * (1 - self.feature_grad_mult)
-
-        # Compute attention mask from lengths if provided
-        attention_mask = None
-        if lengths is not None:
-            batch_size, max_len = features.shape[:2]
-            attention_mask = (
-                torch.arange(max_len, device=lengths.device).expand(batch_size, max_len) < lengths[:, None]
-            )
-
-        # Encode with masking (mask applied in transformer via attention)
-        # Note: mask_time_indices should mask encoder input, not attention
         encoder_out = self.wav2vec2.encoder(features, lengths)
         transformer_features = self.project_hid(encoder_out)
 
-        # Quantize features (targets)
         quantized_input = self.dropout_features(features)
         quantized_features, codevector_perplexity = self.quantizer(quantized_input, mask_time_indices)
         quantized_features = self.project_q(quantized_features)
@@ -319,35 +351,13 @@ class Wav2Vec2PretrainModel(nn.Module):
         diversity_loss_val = None
 
         if self.training:
-            # Sample negatives for contrastive loss
-            negative_quantized_features = self._sample_negatives(
-                quantized_features, self.num_negatives, attention_mask
+            loss, contrastive_loss_val, diversity_loss_val = self._compute_training_losses(
+                transformer_features=transformer_features,
+                quantized_features=quantized_features,
+                codevector_perplexity=codevector_perplexity,
+                mask_time_indices=mask_time_indices,
+                attention_mask=attention_mask,
             )
-
-            # Compute contrastive logits
-            logits = self.compute_contrastive_logits(
-                quantized_features[None, :],
-                negative_quantized_features,
-                transformer_features,
-                self.contrastive_logits_temperature,
-            )
-
-            # Mask out negatives identical to positives (low codebook utilization)
-            neg_is_pos = (quantized_features == negative_quantized_features).all(-1)
-            if neg_is_pos.any():
-                logits[1:][neg_is_pos] = float("-inf")
-
-            # Compute contrastive loss
-            preds = logits.transpose(0, 2).reshape(-1, logits.size(0))
-            target = ((1 - mask_time_indices.long()) * -100).transpose(0, 1).flatten()
-            contrastive_loss_val = F.cross_entropy(preds.float(), target, reduction="sum")
-
-            # Compute diversity loss
-            num_codevectors = self.quantizer.num_groups * self.quantizer.num_vars
-            diversity_loss_val = (num_codevectors - codevector_perplexity) / num_codevectors
-
-            # Total loss
-            loss = contrastive_loss_val + self.diversity_loss_weight * diversity_loss_val
 
         return {
             "loss": loss,
@@ -576,6 +586,11 @@ def wav2vec2_base(
 def wav2vec2_base_pretrained(
     dl_kwargs: Optional[dict] = None,
     strict: bool = True,
+    encoder_projection_dropout: float = 0.1,
+    encoder_attention_dropout: float = 0.1,
+    encoder_ff_interm_dropout: float = 0.1,
+    encoder_dropout: float = 0.1,
+    encoder_layer_drop: float = 0.1,
 ) -> Wav2Vec2Model:
     """Builds :func:`wav2vec2_base` and loads ``WAV2VEC2_BASE`` pretrained weights.
 
@@ -585,6 +600,16 @@ def wav2vec2_base_pretrained(
             checkpoint download behavior.
         strict (bool, optional):
             Passed to ``load_state_dict``. Default: ``True``.
+        encoder_projection_dropout (float):
+            Passed to :py:func:`wav2vec2_base`.
+        encoder_attention_dropout (float):
+            Passed to :py:func:`wav2vec2_base`.
+        encoder_ff_interm_dropout (float):
+            Passed to :py:func:`wav2vec2_base`.
+        encoder_dropout (float):
+            Passed to :py:func:`wav2vec2_base`.
+        encoder_layer_drop (float):
+            Passed to :py:func:`wav2vec2_base`.
 
     Returns:
         Wav2Vec2Model:
@@ -595,7 +620,13 @@ def wav2vec2_base_pretrained(
     except ImportError as err:
         raise RuntimeError("torchaudio is required to load WAV2VEC2_BASE pretrained weights.") from err
 
-    model = wav2vec2_base()
+    model = wav2vec2_base(
+        encoder_projection_dropout=encoder_projection_dropout,
+        encoder_attention_dropout=encoder_attention_dropout,
+        encoder_ff_interm_dropout=encoder_ff_interm_dropout,
+        encoder_dropout=encoder_dropout,
+        encoder_layer_drop=encoder_layer_drop,
+    )
     pretrained = torchaudio.pipelines.WAV2VEC2_BASE.get_model(dl_kwargs=dl_kwargs)
     model.load_state_dict(pretrained.state_dict(), strict=strict)
     return model
@@ -643,11 +674,17 @@ def wav2vec2_base_pretrain(
     """
     # Build base wav2vec2 (no aux head needed for pretraining)
 
-    wav2vec2 = wav2vec2_base_pretrained()
+    wav2vec2 = wav2vec2_base_pretrained(
+        encoder_projection_dropout=encoder_projection_dropout,
+        encoder_attention_dropout=encoder_attention_dropout,
+        encoder_ff_interm_dropout=encoder_ff_interm_dropout,
+        encoder_dropout=encoder_dropout,
+        encoder_layer_drop=encoder_layer_drop,
+    )
+    quantizer_input_dim = wav2vec2.encoder.feature_projection.projection.in_features
 
-    # Build quantizer (input_dim = feature extractor output = 512 for base)
     quantizer = Wav2Vec2GumbelVectorQuantizer(
-        input_dim=512,  # Feature extractor output channels
+        input_dim=quantizer_input_dim,
         codevector_dim=codevector_dim,
         num_groups=num_codevector_groups,
         num_vars=num_codevectors_per_group,
@@ -761,10 +798,10 @@ if __name__ == "__main__":
 
 
 __all__ = [
-    "WAV2VEC2_BASE_SAMPLE_RATE",
     "Wav2Vec2GumbelVectorQuantizer",
     "Wav2Vec2PretrainModel",
-    "compute_wav2vec2_full_loss",
+    "Wav2Vec2Model",
+    "wav2vec2_model",
     "wav2vec2_base",
     "wav2vec2_base_pretrained",
     "wav2vec2_base_pretrain",
