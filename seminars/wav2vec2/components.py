@@ -838,6 +838,28 @@ def _get_wavlm_encoder(
     return Encoder(feature_projection, transformer)
 
 
+def _get_feat_extract_output_lengths(
+    input_lengths: torch.Tensor,
+    conv_layers: list = None,
+    add_adapter: bool = None
+) -> torch.Tensor:
+    """
+    Computes the output length of the convolutional layers
+    """
+    if conv_layers is None:
+        # standard base config
+        conv_layers = [(512, 10, 5)] + [(512, 3, 2)] * 4 + [(512, 2, 2)] * 2
+
+    def _conv_out_length(input_length, kernel_size, stride):
+        # 1D convolutional math with padding=0
+        return torch.div(input_length - kernel_size, stride, rounding_mode="floor") + 1
+
+    for _dim, kernel_size, stride in conv_layers:
+        input_lengths = _conv_out_length(input_lengths, kernel_size, stride)
+
+    return input_lengths
+
+
 def _compute_mask_indices(
     shape: Tuple[int, int],
     padding_mask: Optional[Tensor],

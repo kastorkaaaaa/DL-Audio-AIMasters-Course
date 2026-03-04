@@ -11,7 +11,116 @@ except ImportError:  # pragma: no cover - allows running this file as a script
     import components
 
 
+class Wav2Vec2Model(Module):
+    """Acoustic model used in *wav2vec 2.0* :cite:`baevski2020wav2vec`.
 
+    Note:
+        To build the model, please use one of the factory functions.
+
+    See Also:
+        * :class:`torchaudio.pipelines.Wav2Vec2Bundle`: Pretrained models (without fine-tuning)
+        * :class:`torchaudio.pipelines.Wav2Vec2ASRBundle`: ASR pipelines with pretrained models.
+
+    Args:
+        feature_extractor (torch.nn.Module):
+            Feature extractor that extracts feature vectors from raw audio Tensor.
+
+        encoder (torch.nn.Module):
+            Encoder that converts the audio features into the sequence of probability
+            distribution (in negative log-likelihood) over labels.
+
+        aux (torch.nn.Module or None, optional):
+            Auxiliary module. If provided, the output from encoder is passed to this module.
+    """  # noqa: E501
+
+    def __init__(
+        self,
+        feature_extractor: Module,
+        encoder: Module,
+        aux: Optional[Module] = None,
+    ):
+        super().__init__()
+        self.feature_extractor = feature_extractor
+        self.encoder = encoder
+        self.aux = aux
+
+    @torch.jit.export
+    def extract_features(
+        self,
+        waveforms: Tensor,
+        lengths: Optional[Tensor] = None,
+        num_layers: Optional[int] = None,
+    ) -> Tuple[List[Tensor], Optional[Tensor]]:
+        """Extract feature vectors from raw waveforms
+
+        This returns the list of outputs from the intermediate layers of
+        transformer block in encoder.
+
+        Args:
+            waveforms (Tensor): Audio tensor of shape `(batch, frames)`.
+            lengths (Tensor or None, optional):
+                Indicates the valid length of each audio in the batch.
+                Shape: `(batch, )`.
+                When the ``waveforms`` contains audios with different durations,
+                by providing ``lengths`` argument, the model will compute
+                the corresponding valid output lengths and apply proper mask in
+                transformer attention layer.
+                If ``None``, it is assumed that the entire audio waveform
+                length is valid.
+            num_layers (int or None, optional):
+                If given, limit the number of intermediate layers to go through.
+                Providing `1` will stop the computation after going through one
+                intermediate layers. If not given, the outputs from all the
+                intermediate layers are returned.
+
+        Returns:
+            (List[Tensor], Optional[Tensor]):
+            List of Tensors
+                Features from requested layers.
+                Each Tensor is of shape: `(batch, time frame, feature dimension)`
+            Tensor or None
+                If ``lengths`` argument was provided, a Tensor of shape `(batch, )`
+                is returned.
+                It indicates the valid length in time axis of each feature Tensor.
+        """
+        x, lengths = self.feature_extractor(waveforms, lengths)
+        x = self.encoder.extract_features(x, lengths, num_layers)
+        return x, lengths
+
+    def forward(
+        self,
+        waveforms: Tensor,
+        lengths: Optional[Tensor] = None,
+    ) -> Tuple[Tensor, Optional[Tensor]]:
+        """Compute the sequence of probability distribution over labels.
+
+        Args:
+            waveforms (Tensor): Audio tensor of shape `(batch, frames)`.
+            lengths (Tensor or None, optional):
+                Indicates the valid length of each audio in the batch.
+                Shape: `(batch, )`.
+                When the ``waveforms`` contains audios with different durations,
+                by providing ``lengths`` argument, the model will compute
+                the corresponding valid output lengths and apply proper mask in
+                transformer attention layer.
+                If ``None``, it is assumed that all the audio in ``waveforms``
+                have valid length. Default: ``None``.
+
+        Returns:
+            (Tensor, Optional[Tensor]):
+            Tensor
+                The sequences of probability distribution (in logit) over labels.
+                Shape: `(batch, frames, num labels)`.
+            Tensor or None
+                If ``lengths`` argument was provided, a Tensor of shape `(batch, )`
+                is returned.
+                It indicates the valid length in time axis of the output Tensor.
+        """
+        x, lengths = self.feature_extractor(waveforms, lengths)
+        x = self.encoder(x, lengths)
+        if self.aux is not None:
+            x = self.aux(x)
+        return x, lengths
 
 
 class HuBERTPretrainModel(Module):

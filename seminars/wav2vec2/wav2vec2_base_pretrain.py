@@ -16,129 +16,21 @@ except ImportError:  # pragma: no cover - allows running this file as a script
     import components
 
 class Wav2Vec2Model(Module):
-    """Acoustic model used in *wav2vec 2.0* :cite:`baevski2020wav2vec`.
+    """Wav2Vec2 model for both pretraining and fine-tuning.
 
-    Note:
-        To build the model, please use one of the factory functions.
-
-    See Also:
-        * :class:`torchaudio.pipelines.Wav2Vec2Bundle`: Pretrained models (without fine-tuning)
-        * :class:`torchaudio.pipelines.Wav2Vec2ASRBundle`: ASR pipelines with pretrained models.
-
-    Args:
-        feature_extractor (torch.nn.Module):
-            Feature extractor that extracts feature vectors from raw audio Tensor.
-
-        encoder (torch.nn.Module):
-            Encoder that converts the audio features into the sequence of probability
-            distribution (in negative log-likelihood) over labels.
-
-        aux (torch.nn.Module or None, optional):
-            Auxiliary module. If provided, the output from encoder is passed to this module.
-    """  # noqa: E501
-
-    def __init__(
-        self,
-        feature_extractor: Module,
-        encoder: Module,
-        aux: Optional[Module] = None,
-    ):
-        super().__init__()
-        self.feature_extractor = feature_extractor
-        self.encoder = encoder
-        self.aux = aux
-
-    @torch.jit.export
-    def extract_features(
-        self,
-        waveforms: Tensor,
-        lengths: Optional[Tensor] = None,
-        num_layers: Optional[int] = None,
-    ) -> Tuple[List[Tensor], Optional[Tensor]]:
-        """Extract feature vectors from raw waveforms
-
-        This returns the list of outputs from the intermediate layers of
-        transformer block in encoder.
-
-        Args:
-            waveforms (Tensor): Audio tensor of shape `(batch, frames)`.
-            lengths (Tensor or None, optional):
-                Indicates the valid length of each audio in the batch.
-                Shape: `(batch, )`.
-                When the ``waveforms`` contains audios with different durations,
-                by providing ``lengths`` argument, the model will compute
-                the corresponding valid output lengths and apply proper mask in
-                transformer attention layer.
-                If ``None``, it is assumed that the entire audio waveform
-                length is valid.
-            num_layers (int or None, optional):
-                If given, limit the number of intermediate layers to go through.
-                Providing `1` will stop the computation after going through one
-                intermediate layers. If not given, the outputs from all the
-                intermediate layers are returned.
-
-        Returns:
-            (List[Tensor], Optional[Tensor]):
-            List of Tensors
-                Features from requested layers.
-                Each Tensor is of shape: `(batch, time frame, feature dimension)`
-            Tensor or None
-                If ``lengths`` argument was provided, a Tensor of shape `(batch, )`
-                is returned.
-                It indicates the valid length in time axis of each feature Tensor.
-        """
-        x, lengths = self.feature_extractor(waveforms, lengths)
-        x = self.encoder.extract_features(x, lengths, num_layers)
-        return x, lengths
-
-    def forward(
-        self,
-        waveforms: Tensor,
-        lengths: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Optional[Tensor]]:
-        """Compute the sequence of probability distribution over labels.
-
-        Args:
-            waveforms (Tensor): Audio tensor of shape `(batch, frames)`.
-            lengths (Tensor or None, optional):
-                Indicates the valid length of each audio in the batch.
-                Shape: `(batch, )`.
-                When the ``waveforms`` contains audios with different durations,
-                by providing ``lengths`` argument, the model will compute
-                the corresponding valid output lengths and apply proper mask in
-                transformer attention layer.
-                If ``None``, it is assumed that all the audio in ``waveforms``
-                have valid length. Default: ``None``.
-
-        Returns:
-            (Tensor, Optional[Tensor]):
-            Tensor
-                The sequences of probability distribution (in logit) over labels.
-                Shape: `(batch, frames, num labels)`.
-            Tensor or None
-                If ``lengths`` argument was provided, a Tensor of shape `(batch, )`
-                is returned.
-                It indicates the valid length in time axis of the output Tensor.
-        """
-        x, lengths = self.feature_extractor(waveforms, lengths)
-        x = self.encoder(x, lengths)
-        if self.aux is not None:
-            x = self.aux(x)
-        return x, lengths
-    
-
-class Wav2Vec2PretrainModel(nn.Module):
-    """Wav2Vec2 model for self-supervised pretraining.
-
-    Implements the contrastive learning objective from wav2vec 2.0:
+    When used for pretraining (quantizer provided), implements contrastive learning:
     - Mask spans of feature extractor outputs
     - Predict quantized representations at masked positions
     - Contrastive loss against distractors + diversity loss for codebook usage
 
+    When used for fine-tuning/inference (quantizer=None), provides standard encoder outputs.
+
     Args:
-        wav2vec2 (Wav2Vec2Model): Base wav2vec2 model.
-        quantizer (Wav2Vec2GumbelVectorQuantizer): Vector quantizer module.
-        proj_codevector_dim (int): Dimension for contrastive loss projection.
+        feature_extractor (torch.nn.Module): Feature extractor for raw audio.
+        encoder (torch.nn.Module): Transformer encoder.
+        aux (torch.nn.Module or None, optional): Auxiliary head for fine-tuning.
+        quantizer (Wav2Vec2GumbelVectorQuantizer or None, optional): Vector quantizer for pretraining.
+        proj_codevector_dim (int or None, optional): Dimension for contrastive projection.
         num_negatives (int): Number of negative samples for contrastive loss.
         contrastive_logits_temperature (float): Temperature for contrastive loss.
         diversity_loss_weight (float): Weight for diversity loss term.
@@ -148,9 +40,11 @@ class Wav2Vec2PretrainModel(nn.Module):
 
     def __init__(
         self,
-        wav2vec2: Wav2Vec2Model,
-        quantizer: Wav2Vec2GumbelVectorQuantizer,
-        proj_codevector_dim: int,
+        feature_extractor: Module,
+        encoder: Module,
+        aux: Optional[Module] = None,
+        quantizer: Optional[Wav2Vec2GumbelVectorQuantizer] = None,
+        proj_codevector_dim: Optional[int] = None,
         num_negatives: int = 100,
         contrastive_logits_temperature: float = 0.1,
         diversity_loss_weight: float = 0.1,
@@ -158,7 +52,9 @@ class Wav2Vec2PretrainModel(nn.Module):
         feat_quantizer_dropout: float = 0.0,
     ):
         super().__init__()
-        self.wav2vec2 = wav2vec2
+        self.feature_extractor = feature_extractor
+        self.encoder = encoder
+        self.aux = aux
         self.quantizer = quantizer
         self.num_negatives = num_negatives
         self.contrastive_logits_temperature = contrastive_logits_temperature
@@ -166,13 +62,16 @@ class Wav2Vec2PretrainModel(nn.Module):
         self.feature_grad_mult = feature_grad_mult
         self.feat_quantizer_dropout = feat_quantizer_dropout
 
-        # Projection layers for contrastive learning
-        encoder_embed_dim = wav2vec2.encoder.feature_projection.projection.out_features
-        codevector_dim = quantizer.codevectors.shape[-1] * quantizer.num_groups
-
-        self.project_q = nn.Linear(codevector_dim, proj_codevector_dim)
-        self.project_hid = nn.Linear(encoder_embed_dim, proj_codevector_dim)
-        self.dropout_features = nn.Dropout(feat_quantizer_dropout)
+        if quantizer is not None and proj_codevector_dim is not None:
+            encoder_embed_dim = encoder.feature_projection.projection.out_features
+            codevector_dim = quantizer.codevectors.shape[-1] * quantizer.num_groups
+            self.project_q = nn.Linear(codevector_dim, proj_codevector_dim)
+            self.project_hid = nn.Linear(encoder_embed_dim, proj_codevector_dim)
+            self.dropout_features = nn.Dropout(feat_quantizer_dropout)
+        else:
+            self.project_q = None
+            self.project_hid = None
+            self.dropout_features = None
 
     def _scale_feature_gradients(self, features: Tensor) -> Tensor:
         if self.feature_grad_mult is not None and self.feature_grad_mult < 1.0:
@@ -185,6 +84,45 @@ class Wav2Vec2PretrainModel(nn.Module):
             return None
         batch_size, max_len = features.shape[:2]
         return torch.arange(max_len, device=lengths.device).expand(batch_size, max_len) < lengths[:, None]
+
+    @staticmethod
+    def _get_feature_vector_attention_mask(
+        feature_vector_length: int,
+        attention_mask: torch.LongTensor,
+        output_lengths: Optional[torch.LongTensor] = None,
+    ):
+        """Compute attention mask for feature vectors from waveform attention mask.
+
+        Args:
+            feature_vector_length: Length of feature vector dimension (output of CNN).
+            attention_mask: Waveform-level attention mask (1 for valid, 0 for padded).
+            output_lengths: Pre-computed feature vector lengths. If None, computed from attention_mask.
+
+        Returns:
+            Boolean attention mask for feature vectors (True for valid positions).
+        """
+        if output_lengths is None:
+            # Effectively attention_mask.sum(-1), but not inplace to be able to run
+            # on inference mode.
+            non_padded_lengths = attention_mask.cumsum(dim=-1)[:, -1]
+
+            # Use the explicit components helper block for proper output math calculation
+            output_lengths = components._get_feat_extract_output_lengths(
+                non_padded_lengths,
+                conv_layers=[(512, 10, 5)] + [(512, 3, 2)] * 4 + [(512, 2, 2)] * 2
+            )
+
+        output_lengths = output_lengths.to(torch.long)
+
+        batch_size = attention_mask.shape[0]
+
+        new_attention_mask = torch.zeros(
+            (batch_size, feature_vector_length), dtype=attention_mask.dtype, device=attention_mask.device
+        )
+        # these two operations makes sure that all values before the output lengths idxs are attended to
+        new_attention_mask[(torch.arange(batch_size, device=attention_mask.device), output_lengths - 1)] = 1
+        new_attention_mask = new_attention_mask.flip([-1]).cumsum(-1).flip([-1]).bool()
+        return new_attention_mask
 
     def _compute_training_losses(
         self,
@@ -213,6 +151,9 @@ class Wav2Vec2PretrainModel(nn.Module):
         target = ((1 - mask_time_indices.long()) * -100).transpose(0, 1).flatten()
         contrastive_loss = F.cross_entropy(preds.float(), target, reduction="sum")
 
+        num_losses = mask_time_indices.sum()
+        contrastive_loss = contrastive_loss / num_losses
+
         num_codevectors = self.quantizer.num_groups * self.quantizer.num_vars
         diversity_loss = (num_codevectors - codevector_perplexity) / num_codevectors
         total_loss = contrastive_loss + self.diversity_loss_weight * diversity_loss
@@ -224,7 +165,7 @@ class Wav2Vec2PretrainModel(nn.Module):
 
     def freeze_feature_extractor(self):
         """Disable gradient computation for feature extractor."""
-        for param in self.wav2vec2.feature_extractor.parameters():
+        for param in self.feature_extractor.parameters():
             param.requires_grad = False
 
     @staticmethod
@@ -312,34 +253,64 @@ class Wav2Vec2PretrainModel(nn.Module):
         logits = logits / temperature
         return logits
 
+    @torch.jit.export
+    def extract_features(
+        self,
+        waveforms: Tensor,
+        lengths: Optional[Tensor] = None,
+        num_layers: Optional[int] = None,
+    ) -> Tuple[List[Tensor], Optional[Tensor]]:
+        """Extract feature vectors from raw waveforms.
+
+        Args:
+            waveforms (Tensor): Audio tensor of shape `(batch, frames)`.
+            lengths (Tensor or None, optional): Valid lengths. Shape: `(batch, )`.
+            num_layers (int or None, optional): Number of intermediate layers.
+
+        Returns:
+            (List[Tensor], Optional[Tensor]): Features from layers and valid lengths.
+        """
+        x, lengths = self.feature_extractor(waveforms, lengths)
+        x = self.encoder.extract_features(x, lengths, num_layers)
+        return x, lengths
+
     def forward(
         self,
         waveforms: Tensor,
-        mask_time_indices: Tensor,
-        audio_lengths: Optional[Tensor] = None,
-    ) -> Dict[str, Tensor]:
-        """Compute wav2vec2 pretraining loss.
+        lengths: Optional[Tensor] = None,
+        mask_time_indices: Optional[Tensor] = None,
+    ):
+        """Forward pass - inference or pretraining mode.
 
         Args:
             waveforms (Tensor): Audio waveforms. Shape: (batch, frames).
-            mask_time_indices (Tensor): Boolean mask indicating masked positions.
-                Shape: (batch, seq_len) where seq_len is feature extractor output length.
-            audio_lengths (Tensor or None): Valid audio lengths. Shape: (batch,).
+            lengths (Tensor or None, optional): Valid audio lengths. Shape: (batch,).
+            mask_time_indices (Tensor or None, optional): If provided, runs pretraining mode.
 
         Returns:
-            Dict containing:
-                - loss (Tensor): Total loss (contrastive + diversity).
-                - contrastive_loss (Tensor): Contrastive loss component.
-                - diversity_loss (Tensor): Diversity loss component.
-                - projected_states (Tensor): Projected encoder outputs.
-                - projected_quantized_states (Tensor): Projected quantized targets.
-                - codevector_perplexity (Tensor): Codebook usage perplexity.
+            If mask_time_indices is None (inference mode):
+                Tuple[Tensor, Optional[Tensor]]: Encoder output and lengths.
+            If mask_time_indices is provided (pretraining mode):
+                Dict[str, Tensor]: Loss dict with contrastive and diversity losses.
         """
-        features, lengths = self.wav2vec2.feature_extractor(waveforms, audio_lengths)
-        features = self._scale_feature_gradients(features)
-        attention_mask = self._get_attention_mask(features, lengths)
+        if mask_time_indices is None:
+            x, lengths = self.feature_extractor(waveforms, lengths)
+            x = self.encoder(x, lengths)
+            if self.aux is not None:
+                x = self.aux(x)
+            return x, lengths
 
-        encoder_out = self.wav2vec2.encoder(features, lengths)
+        features, lengths = self.feature_extractor(waveforms, lengths)
+        features = self._scale_feature_gradients(features)
+
+        # Build attention mask strictly via _get_feature_vector_attention_mask using wave lengths
+        if lengths is not None:
+            raw_mask = torch.arange(waveforms.shape[1], device=lengths.device)[None, :] < lengths[:, None]
+            attention_mask = self._get_feature_vector_attention_mask(features.shape[1], raw_mask.long())
+        else:
+            attention_mask = None
+
+        encoder_out = self.encoder(features, lengths)
         transformer_features = self.project_hid(encoder_out)
 
         quantized_input = self.dropout_features(features)
@@ -367,342 +338,124 @@ class Wav2Vec2PretrainModel(nn.Module):
             "projected_quantized_states": quantized_features,
             "codevector_perplexity": codevector_perplexity,
         }
-    
 
-def wav2vec2_model(
-    extractor_mode: str,
-    extractor_conv_layer_config: Optional[List[Tuple[int, int, int]]],
-    extractor_conv_bias: bool,
-    encoder_embed_dim: int,
-    encoder_projection_dropout: float,
-    encoder_pos_conv_kernel: int,
-    encoder_pos_conv_groups: int,
-    encoder_num_layers: int,
-    encoder_num_heads: int,
-    encoder_attention_dropout: float,
-    encoder_ff_interm_features: int,
-    encoder_ff_interm_dropout: float,
-    encoder_dropout: float,
-    encoder_layer_norm_first: bool,
-    encoder_layer_drop: float,
-    aux_num_out: Optional[int],
-) -> Wav2Vec2Model:
-    """Builds custom :class:`~torchaudio.models.Wav2Vec2Model`.
+    @classmethod
+    def create(
+        self,
+        extractor_mode: str = "group_norm",
+        extractor_conv_layer_config: Optional[List[Tuple[int, int, int]]] = None,
+        extractor_conv_bias: bool = False,
+        encoder_embed_dim: int = 768,
+        encoder_projection_dropout: float = 0.1,
+        encoder_pos_conv_kernel: int = 128,
+        encoder_pos_conv_groups: int = 16,
+        encoder_num_layers: int = 12,
+        encoder_num_heads: int = 12,
+        encoder_attention_dropout: float = 0.1,
+        encoder_ff_interm_features: int = 3072,
+        encoder_ff_interm_dropout: float = 0.1,
+        encoder_dropout: float = 0.1,
+        encoder_layer_norm_first: bool = False,
+        encoder_layer_drop: float = 0.1,
+        load_pretrained: bool = True,
+        dl_kwargs: Optional[dict] = None,
+        strict: bool = True,
+        codevector_dim: int = 256,
+        num_codevector_groups: int = 2,
+        num_codevectors_per_group: int = 320,
+        proj_codevector_dim: int = 256,
+        num_negatives: int = 100,
+        contrastive_logits_temperature: float = 0.1,
+        diversity_loss_weight: float = 0.1,
+        feature_grad_mult: Optional[float] = 0.0,
+        feat_quantizer_dropout: float = 0.0,
+    ) -> "Wav2Vec2Model":
+        """Build Wav2Vec2Model with configurable architecture.
 
-    Note:
-        The "feature extractor" below corresponds to
-        `ConvFeatureExtractionModel <https://github.com/pytorch/fairseq/blob/dd3bd3c0497ae9a7ae7364404a6b0a4c501780b3/fairseq/models/wav2vec/wav2vec2.py#L736>`__
-        in the original ``fairseq`` implementation.
-        This is referred as "(convolutional) feature encoder" in the *wav2vec 2.0*
-        :cite:`baevski2020wav2vec` paper.
+        Args:
+            extractor_mode (str): Feature extractor mode ("group_norm" or "layer_norm").
+            extractor_conv_layer_config: Conv layer config. None uses default.
+            extractor_conv_bias (bool): Whether conv layers have bias.
+            encoder_embed_dim (int): Encoder embedding dimension.
+            encoder_projection_dropout (float): Dropout after projection.
+            encoder_pos_conv_kernel (int): Positional conv kernel size.
+            encoder_pos_conv_groups (int): Positional conv groups.
+            encoder_num_layers (int): Number of transformer layers.
+            encoder_num_heads (int): Number of attention heads.
+            encoder_attention_dropout (float): Attention dropout.
+            encoder_ff_interm_features (int): Feed-forward intermediate dimension.
+            encoder_ff_interm_dropout (float): Feed-forward dropout.
+            encoder_dropout (float): Encoder dropout.
+            encoder_layer_norm_first (bool): Layer norm before attention.
+            encoder_layer_drop (float): Layer dropout probability.
+            load_pretrained (bool): Whether to load WAV2VEC2_BASE pretrained weights.
+            dl_kwargs (dict or None): Download kwargs for torchaudio.
+            strict (bool): Strict loading for state_dict.
+            codevector_dim (int): Dimension of codevectors.
+            num_codevector_groups (int): Number of codevector groups.
+            num_codevectors_per_group (int): Codevectors per group.
+            proj_codevector_dim (int): Dimension for contrastive projection.
+            num_negatives (int): Number of negative samples.
+            contrastive_logits_temperature (float): Contrastive loss temperature.
+            diversity_loss_weight (float): Weight for diversity loss.
+            feature_grad_mult (float or None): Gradient multiplier for feature extractor.
+            feat_quantizer_dropout (float): Dropout before quantizer.
 
-        The "encoder" below corresponds to `TransformerEncoder <https://github.com/pytorch/fairseq/blob/dd3bd3c0497ae9a7ae7364404a6b0a4c501780b3/fairseq/models/wav2vec/wav2vec2.py#L817>`__,
-        and this is referred as "Transformer" in the paper.
+        Returns:
+            Wav2Vec2Model: Model ready for pretraining.
+        """
+        if extractor_conv_layer_config is None:
+            extractor_conv_layer_config = [(512, 10, 5)] + [(512, 3, 2)] * 4 + [(512, 2, 2)] * 2
 
-    Args:
-        extractor_mode (str): Operation mode of feature extractor.
-            Valid values are ``"group_norm"`` or ``"layer_norm"``.
-            If ``"group_norm"``, then a single normalization is applied
-            in the first convolution block. Otherwise, all the convolution
-            blocks will have layer normalization.
+        feature_extractor = components._get_feature_extractor(
+            extractor_mode, extractor_conv_layer_config, extractor_conv_bias
+        )
+        encoder = components._get_encoder(
+            in_features=extractor_conv_layer_config[-1][0],
+            embed_dim=encoder_embed_dim,
+            dropout_input=encoder_projection_dropout,
+            pos_conv_kernel=encoder_pos_conv_kernel,
+            pos_conv_groups=encoder_pos_conv_groups,
+            num_layers=encoder_num_layers,
+            num_heads=encoder_num_heads,
+            attention_dropout=encoder_attention_dropout,
+            ff_interm_features=encoder_ff_interm_features,
+            ff_interm_dropout=encoder_ff_interm_dropout,
+            dropout=encoder_dropout,
+            layer_norm_first=encoder_layer_norm_first,
+            layer_drop=encoder_layer_drop,
+        )
 
-            This option corresponds to ``extractor_mode`` from ``fairseq``.
-        extractor_conv_layer_config (list of integer tuples or None):
-            Configuration of convolution layers in feature extractor.
-            List of convolution configuration,
-            i.e. ``[(output_channel, kernel_size, stride), ...]``
+        quantizer_input_dim = encoder.feature_projection.projection.in_features
+        quantizer = Wav2Vec2GumbelVectorQuantizer(
+            input_dim=quantizer_input_dim,
+            codevector_dim=codevector_dim,
+            num_groups=num_codevector_groups,
+            num_vars=num_codevectors_per_group,
+        )
 
-            If ``None`` is provided, then the following default value is used.
+        model = self(
+            feature_extractor=feature_extractor,
+            encoder=encoder,
+            aux=None,
+            quantizer=quantizer,
+            proj_codevector_dim=proj_codevector_dim,
+            num_negatives=num_negatives,
+            contrastive_logits_temperature=contrastive_logits_temperature,
+            diversity_loss_weight=diversity_loss_weight,
+            feature_grad_mult=feature_grad_mult,
+            feat_quantizer_dropout=feat_quantizer_dropout,
+        )
 
-            .. code-block:: python
+        if load_pretrained:
+            try:
+                import torchaudio
+            except ImportError as err:
+                raise RuntimeError("torchaudio is required to load WAV2VEC2_BASE pretrained weights.") from err
+            pretrained = torchaudio.pipelines.WAV2VEC2_BASE.get_model(dl_kwargs=dl_kwargs)
+            model.load_state_dict(pretrained.state_dict(), strict=False)
 
-               [
-                 (512, 10, 5),
-                 (512, 3, 2),
-                 (512, 3, 2),
-                 (512, 3, 2),
-                 (512, 3, 2),
-                 (512, 2, 2),
-                 (512, 2, 2),
-               ]
-
-            This option corresponds to ``conv_feature_layers`` from ``fairseq``.
-
-        extractor_conv_bias (bool):
-            Whether to include bias term to each convolution operation.
-
-            This option corresponds to ``conv_bias`` from ``fairseq``.
-
-        encoder_embed_dim (int):
-            The dimension of embedding in encoder.
-
-            This option corresponds to ``encoder_embed_dim`` from ``fairseq``.
-
-        encoder_projection_dropout (float):
-            The dropout probability applied after the input feature is projected
-            to ``encoder_embed_dim``.
-
-            This option corresponds to ``dropout_input`` from ``fairseq``.
-
-        encoder_pos_conv_kernel (int):
-            The kernel size of convolutional positional embeddings.
-
-            This option corresponds to ``conv_pos`` from ``fairseq``.
-
-        encoder_pos_conv_groups (int):
-            The number of groups of convolutional positional embeddings.
-
-            This option corresponds to ``conv_pos_groups`` from ``fairseq``.
-
-        encoder_num_layers (int):
-            The number of self attention layers in transformer block.
-
-            This option corresponds to ``encoder_layers`` from ``fairseq``.
-
-        encoder_num_heads (int):
-            The number of heads in self attention layers.
-
-            This option corresponds to ``encoder_attention_heads`` from ``fairseq``.
-
-        encoder_attention_dropout (float):
-            The dropout probability applied after softmax in self-attention layer.
-
-            This option corresponds to ``attention_dropout`` from ``fairseq``.
-
-        encoder_ff_interm_features (int):
-            The dimension of hidden features in feed forward layer.
-
-            This option corresponds to ``encoder_ffn_embed_dim`` from ``fairseq``.
-
-        encoder_ff_interm_dropout (float):
-            The dropout probability applied in feedforward layer.
-
-            This option correspinds to ``activation_dropout`` from ``fairseq``.
-
-        encoder_dropout (float):
-            The dropout probability applied at the end of feed forward layer.
-
-            This option corresponds to ``dropout`` from ``fairseq``.
-
-        encoder_layer_norm_first (bool):
-            Control the order of layer norm in transformer layer and each encoder layer.
-            If True, in transformer layer, layer norm is applied before features are fed
-            to encoder layers. In encoder layer, two layer norms are applied before and after
-            self attention.
-            If False, in transformer layer, layer norm is applied after features are fed
-            to encoder layers. In encoder layer, two layer norms are applied after self
-            attention, before and after feed forward.
-
-            This option corresponds to ``layer_norm_first`` from ``fairseq``.
-
-        encoder_layer_drop (float):
-            Probability to drop each encoder layer during training.
-
-            This option corresponds to ``layerdrop`` from ``fairseq``.
-
-        aux_num_out (int or None):
-            When provided, attach an extra linear layer on top of encoder, which can be
-            used for fine-tuning.
-
-    Returns:
-        Wav2Vec2Model:
-            The resulting model.
-    """  # noqa: E501
-    if extractor_conv_layer_config is None:
-        extractor_conv_layer_config = [(512, 10, 5)] + [(512, 3, 2)] * 4 + [(512, 2, 2)] * 2
-
-    feature_extractor = components._get_feature_extractor(
-        extractor_mode, extractor_conv_layer_config, extractor_conv_bias
-    )
-    encoder = components._get_encoder(
-        in_features=extractor_conv_layer_config[-1][0],
-        embed_dim=encoder_embed_dim,
-        dropout_input=encoder_projection_dropout,
-        pos_conv_kernel=encoder_pos_conv_kernel,
-        pos_conv_groups=encoder_pos_conv_groups,
-        num_layers=encoder_num_layers,
-        num_heads=encoder_num_heads,
-        attention_dropout=encoder_attention_dropout,
-        ff_interm_features=encoder_ff_interm_features,
-        ff_interm_dropout=encoder_ff_interm_dropout,
-        dropout=encoder_dropout,
-        layer_norm_first=encoder_layer_norm_first,
-        layer_drop=encoder_layer_drop,
-    )
-    aux = None
-    if aux_num_out is not None:
-        aux = torch.nn.Linear(in_features=encoder_embed_dim, out_features=aux_num_out)
-    return Wav2Vec2Model(feature_extractor, encoder, aux)
-
-
-def wav2vec2_base(
-    encoder_projection_dropout: float = 0.1,
-    encoder_attention_dropout: float = 0.1,
-    encoder_ff_interm_dropout: float = 0.1,
-    encoder_dropout: float = 0.1,
-    encoder_layer_drop: float = 0.1,
-    aux_num_out: Optional[int] = None,
-) -> Wav2Vec2Model:
-    """Builds "base" :class:`~torchaudio.models.Wav2Vec2Model` from *wav2vec 2.0* :cite:`baevski2020wav2vec`
-
-    Args:
-        encoder_projection_dropout (float):
-            See :py:func:`wav2vec2_model`.
-        encoder_attention_dropout (float):
-            See :py:func:`wav2vec2_model`.
-        encoder_ff_interm_dropout (float):
-            See :py:func:`wav2vec2_model`.
-        encoder_dropout (float):
-            See :py:func:`wav2vec2_model`.
-        encoder_layer_drop (float):
-            See :py:func:`wav2vec2_model`.
-        aux_num_out (int or None, optional):
-            See :py:func:`wav2vec2_model`.
-
-    Returns:
-        Wav2Vec2Model:
-            The resulting model.
-    """  # noqa: E501
-    return wav2vec2_model(
-        extractor_mode="group_norm",
-        extractor_conv_layer_config=None,
-        extractor_conv_bias=False,
-        encoder_embed_dim=768,
-        encoder_projection_dropout=encoder_projection_dropout,
-        encoder_pos_conv_kernel=128,
-        encoder_pos_conv_groups=16,
-        encoder_num_layers=12,
-        encoder_num_heads=12,
-        encoder_attention_dropout=encoder_attention_dropout,
-        encoder_ff_interm_features=3072,
-        encoder_ff_interm_dropout=encoder_ff_interm_dropout,
-        encoder_dropout=encoder_dropout,
-        encoder_layer_norm_first=False,
-        encoder_layer_drop=encoder_layer_drop,
-        aux_num_out=aux_num_out,
-    )
-
-
-def wav2vec2_base_pretrained(
-    dl_kwargs: Optional[dict] = None,
-    strict: bool = True,
-    encoder_projection_dropout: float = 0.1,
-    encoder_attention_dropout: float = 0.1,
-    encoder_ff_interm_dropout: float = 0.1,
-    encoder_dropout: float = 0.1,
-    encoder_layer_drop: float = 0.1,
-) -> Wav2Vec2Model:
-    """Builds :func:`wav2vec2_base` and loads ``WAV2VEC2_BASE`` pretrained weights.
-
-    Args:
-        dl_kwargs (dict or None, optional):
-            Passed to ``torchaudio.pipelines.WAV2VEC2_BASE.get_model`` for
-            checkpoint download behavior.
-        strict (bool, optional):
-            Passed to ``load_state_dict``. Default: ``True``.
-        encoder_projection_dropout (float):
-            Passed to :py:func:`wav2vec2_base`.
-        encoder_attention_dropout (float):
-            Passed to :py:func:`wav2vec2_base`.
-        encoder_ff_interm_dropout (float):
-            Passed to :py:func:`wav2vec2_base`.
-        encoder_dropout (float):
-            Passed to :py:func:`wav2vec2_base`.
-        encoder_layer_drop (float):
-            Passed to :py:func:`wav2vec2_base`.
-
-    Returns:
-        Wav2Vec2Model:
-            The resulting model with pretrained weights loaded.
-    """
-    try:
-        import torchaudio
-    except ImportError as err:
-        raise RuntimeError("torchaudio is required to load WAV2VEC2_BASE pretrained weights.") from err
-
-    model = wav2vec2_base(
-        encoder_projection_dropout=encoder_projection_dropout,
-        encoder_attention_dropout=encoder_attention_dropout,
-        encoder_ff_interm_dropout=encoder_ff_interm_dropout,
-        encoder_dropout=encoder_dropout,
-        encoder_layer_drop=encoder_layer_drop,
-    )
-    pretrained = torchaudio.pipelines.WAV2VEC2_BASE.get_model(dl_kwargs=dl_kwargs)
-    model.load_state_dict(pretrained.state_dict(), strict=strict)
-    return model
-
-
-
-def wav2vec2_base_pretrain(
-    encoder_projection_dropout: float = 0.1,
-    encoder_attention_dropout: float = 0.1,
-    encoder_ff_interm_dropout: float = 0.1,
-    encoder_dropout: float = 0.1,
-    encoder_layer_drop: float = 0.1,
-    # Quantizer config
-    codevector_dim: int = 256,
-    num_codevector_groups: int = 2,
-    num_codevectors_per_group: int = 320,
-    # Pretraining config
-    proj_codevector_dim: int = 256,
-    num_negatives: int = 100,
-    contrastive_logits_temperature: float = 0.1,
-    diversity_loss_weight: float = 0.1,
-    feature_grad_mult: Optional[float] = 0.0,
-    feat_quantizer_dropout: float = 0.0,
-) -> Wav2Vec2PretrainModel:
-    """Builds Wav2Vec2PretrainModel with base architecture.
-
-    Args:
-        encoder_projection_dropout (float): Dropout after feature projection.
-        encoder_attention_dropout (float): Dropout in attention layers.
-        encoder_ff_interm_dropout (float): Dropout in feed-forward layers.
-        encoder_dropout (float): Dropout at end of encoder layers.
-        encoder_layer_drop (float): Probability of dropping encoder layers.
-        codevector_dim (int): Dimension of codevectors.
-        num_codevector_groups (int): Number of codevector groups (V).
-        num_codevectors_per_group (int): Codevectors per group (K).
-        proj_codevector_dim (int): Dimension for contrastive projection.
-        num_negatives (int): Number of negative samples for contrastive loss.
-        contrastive_logits_temperature (float): Temperature for contrastive loss.
-        diversity_loss_weight (float): Weight for diversity loss.
-        feature_grad_mult (float or None): Gradient multiplier for feature extractor.
-        feat_quantizer_dropout (float): Dropout before quantizer.
-
-    Returns:
-        Wav2Vec2PretrainModel: Model ready for pretraining.
-    """
-    # Build base wav2vec2 (no aux head needed for pretraining)
-
-    wav2vec2 = wav2vec2_base_pretrained(
-        encoder_projection_dropout=encoder_projection_dropout,
-        encoder_attention_dropout=encoder_attention_dropout,
-        encoder_ff_interm_dropout=encoder_ff_interm_dropout,
-        encoder_dropout=encoder_dropout,
-        encoder_layer_drop=encoder_layer_drop,
-    )
-    quantizer_input_dim = wav2vec2.encoder.feature_projection.projection.in_features
-
-    quantizer = Wav2Vec2GumbelVectorQuantizer(
-        input_dim=quantizer_input_dim,
-        codevector_dim=codevector_dim,
-        num_groups=num_codevector_groups,
-        num_vars=num_codevectors_per_group,
-    )
-
-    # Build pretrain model
-    model = Wav2Vec2PretrainModel(
-        wav2vec2=wav2vec2,
-        quantizer=quantizer,
-        proj_codevector_dim=proj_codevector_dim,
-        num_negatives=num_negatives,
-        contrastive_logits_temperature=contrastive_logits_temperature,
-        diversity_loss_weight=diversity_loss_weight,
-        feature_grad_mult=feature_grad_mult,
-        feat_quantizer_dropout=feat_quantizer_dropout,
-    )
-
-    return model
+        return model
 
 
 def test_wav2vec2_pretrain_forward(
@@ -730,7 +483,7 @@ def test_wav2vec2_pretrain_forward(
         raise RuntimeError("torchaudio is required to load wav files for this test function.") from err
 
     # Build model and set to training mode
-    model = wav2vec2_base_pretrain()
+    model = Wav2Vec2Model.create()
     model.train()
 
     # Load waveform from file (channels, frames)
@@ -747,7 +500,7 @@ def test_wav2vec2_pretrain_forward(
 
     # Compute feature extractor output length for mask shape
     with torch.no_grad():
-        features, _ = model.wav2vec2.feature_extractor(waveforms, audio_lengths)
+        features, _ = model.feature_extractor(waveforms, audio_lengths)
         seq_len = features.shape[1]
     if seq_len < 2:
         raise ValueError(
@@ -772,7 +525,7 @@ def test_wav2vec2_pretrain_forward(
     )
 
     # Run forward pass
-    outputs = model(waveforms, mask_time_indices, audio_lengths)
+    outputs = model(waveforms, lengths=audio_lengths, mask_time_indices=mask_time_indices)
 
     # Print summary
     print(f"Input wav: {wav_path}")
@@ -792,17 +545,16 @@ if __name__ == "__main__":
     out = test_wav2vec2_pretrain_forward(
     wav_path="/Users/oorgien/codes/Dl_audio_repos/DL-Audio-AIMasters-Course/seminars/seminar01/sample1.wav",
     batch_size=1,
-    mask_prob=0.01,
-    mask_length=2,
+    mask_prob=0.05,
+    mask_length=10,
 )
 
 
 __all__ = [
     "Wav2Vec2GumbelVectorQuantizer",
-    "Wav2Vec2PretrainModel",
     "Wav2Vec2Model",
-    "wav2vec2_model",
-    "wav2vec2_base",
-    "wav2vec2_base_pretrained",
-    "wav2vec2_base_pretrain",
+    "Wav2Vec2PretrainModel",
 ]
+
+# Backward compatibility alias
+Wav2Vec2PretrainModel = Wav2Vec2Model
