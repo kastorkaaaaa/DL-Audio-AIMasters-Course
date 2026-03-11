@@ -28,9 +28,9 @@ Topics discussed in course:
 | 4 | <b>Lecture:</b> | Key-word spotting (KWS) | [slides](lectures/lecture04_DLAudio2026.pdf)  |
 |   | <b>Seminar:</b> | Key-word spotting | [notebook](seminars/seminar04/seminar4.ipynb) |
 | 5 | <b>Lecture:</b> | Text-to-speech 1: WaveNet, Tacotron, FastSpeech, Guided Attention | [slides](lectures/lecture05_DLAudio2026.pdf)  |
-|  | <b>Seminar:</b> |  Text-to-speech: Tacotron2 | [notebook](seminars/seminar05/seminar5.ipynb) |
+|  | <b>Seminar:</b> |  Automatic Speech Recognition 3: Wav2Vec2.0 | [notebook](seminars/seminar05/seminar5.ipynb) |
 | 6 | <b>Lecture:</b> |  Text-to-speech 2: Neural Vocoders (PWGAN, DiffWave, Glow-TTS, Hi-Fi GAN, VITS) | [slides](lectures/lecture06_DLAudio2026.pdf)  |
-|   | <b>Seminar:</b> | Wavenet   | [notebook](seminars/seminar06/seminar6.ipynb) |
+|   | <b>Seminar:</b> | Speaker verification, Angular Softmax, Margin Softmax   | [notebook](seminars/seminar06/seminar6.ipynb) |
 | 7 | <b>Lecture:</b>  | Voice Conversion: CycleGAN-VC, StarGAN-VC, AutoVC, Singing Voice Conversion | [slides](lectures/lecture07_DLAudio2026.pdf)  |
 |   | <b>Seminar:</b> | VAE Wavenet Vocoder, Normalizing Flow | [notebook](seminars/seminar07/seminar7.ipynb) |
 | 8 | <b>Lecture:</b>    | Self-supervised learning in Audio (wav2vec2, GigaAM, HuBERT, BEST-RQ) | [slides](lectures/lecture08_DLAudio2026.pdf)  |
