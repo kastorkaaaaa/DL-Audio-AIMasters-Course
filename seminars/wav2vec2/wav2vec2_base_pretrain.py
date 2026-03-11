@@ -68,15 +68,40 @@ class Wav2Vec2Model(Module):
             self.project_q = nn.Linear(codevector_dim, proj_codevector_dim)
             self.project_hid = nn.Linear(encoder_embed_dim, proj_codevector_dim)
             self.dropout_features = nn.Dropout(feat_quantizer_dropout)
+            # Learned mask embedding vector for pretraining (same dim as encoder output)
+            self.masked_spec_embed = nn.Parameter(torch.Tensor(encoder_embed_dim).uniform_())
         else:
             self.project_q = None
             self.project_hid = None
             self.dropout_features = None
+            self.masked_spec_embed = None
 
     def _scale_feature_gradients(self, features: Tensor) -> Tensor:
         if self.feature_grad_mult is not None and self.feature_grad_mult < 1.0:
             return features * self.feature_grad_mult + features.detach() * (1 - self.feature_grad_mult)
         return features
+
+    def _mask_hidden_states(
+        self,
+        hidden_states: Tensor,
+        mask_time_indices: Optional[Tensor] = None,
+    ) -> Tensor:
+        """Replace masked positions with learned mask embedding.
+
+        Args:
+            hidden_states: Tensor of shape (batch, seq_len, hidden_dim).
+            mask_time_indices: Boolean tensor of shape (batch, seq_len) where True indicates masked positions.
+
+        Returns:
+            Tensor with masked positions replaced by self.masked_spec_embed.
+        """
+        if mask_time_indices is None or self.masked_spec_embed is None:
+            return hidden_states
+
+        # Clone to avoid in-place modification
+        hidden_states = hidden_states.clone()
+        hidden_states[mask_time_indices] = self.masked_spec_embed.to(hidden_states.dtype)
+        return hidden_states
 
     @staticmethod
     def _get_attention_mask(features: Tensor, lengths: Optional[Tensor]) -> Optional[Tensor]:
@@ -310,9 +335,28 @@ class Wav2Vec2Model(Module):
         else:
             attention_mask = None
 
-        encoder_out = self.encoder(features, lengths)
+        # Project features to encoder dimension (unmasked - for quantizer)
+        hidden_states = self.encoder.feature_projection(features)
+
+        # Apply masking: replace masked positions with learned mask embedding
+        # Transformer sees MASKED hidden states
+        hidden_states_masked = self._mask_hidden_states(hidden_states, mask_time_indices)
+
+        # Build attention mask for transformer (from lengths, not the boolean mask)
+        if lengths is not None:
+            batch_size, max_len, _ = hidden_states_masked.shape
+            attn_mask = torch.arange(max_len, device=lengths.device).expand(batch_size, max_len) >= lengths[:, None]
+            attn_mask = -10000.0 * attn_mask[:, None, None, :].to(dtype=hidden_states_masked.dtype)
+            attn_mask = attn_mask.expand(batch_size, 1, max_len, max_len)
+        else:
+            attn_mask = None
+
+        # Transformer processes masked hidden states
+        encoder_out = self.encoder.transformer(hidden_states_masked, attention_mask=attn_mask)
         transformer_features = self.project_hid(encoder_out)
 
+        # Quantize all (UNMASKED) extracted features
+        # IMPORTANT: quantizer receives the ORIGINAL unmasked features, not the masked ones!
         quantized_input = self.dropout_features(features)
         quantized_features, codevector_perplexity = self.quantizer(quantized_input, mask_time_indices)
         quantized_features = self.project_q(quantized_features)
