@@ -32,10 +32,10 @@ Topics discussed in course:
 | 6 | <b>Lecture:</b> | Speaker verification and identification | [slides](lectures/lecture06_DLAudio2026.pdf)  |
 |   | <b>Seminar:</b> | Speaker verification, Angular Softmax, Margin Softmax   | [notebook](seminars/seminar06/seminar6.ipynb) |
 | 7 | <b>Lecture:</b> | Text-to-speech 1: WaveNet, Tacotron2, FastSpeech, Guided Attention, Neural Vocoders (PW-GAN, Hi-Fi GAN) | [slides](lectures/lecture07_DLAudio2026.pdf)  |
-|   | <b>Seminar:</b> |  | [notebook](seminars/seminar07/seminar7.ipynb) |
-| 8 | <b>Lecture:</b> | Text-to-speech 2: Flow-based models (Glow-TTS, VITS), diffusion TTS (Grad-TTS, DiffWave), Voicebox, Conditional Flow Matching (E2-TTS, F5-TTS)| [slides](lectures/lecture08_DLAudio2026.pdf)  |
-|   | <b>Seminar:</b>  | HIFI-GAN | [notebook](seminars/seminar08/seminar8.ipynb) |
-| 9 | <b>Lecture:</b> | Voice Conversion: CycleGAN-VC, StarGAN-VC, AutoVC, Singing Voice Conversion | [slides](lectures/lecture09_DLAudio2026.pdf)  |
+|   | <b>Seminar:</b> | Text-to-speech 1: WaveNet, Tacotron2 | [notebook](seminars/seminar07/seminar7.ipynb) |
+| 8 | <b>Lecture:</b> | Text-to-speech 2: Flow-based models (Glow-TTS, VITS), diffusion TTS (DiffWave, Grad-TTS), Conditional Flow Matching (Voicebox, E2-TTS, F5-TTS)| [slides](lectures/lecture08_DLAudio2026.pdf)  |
+|   | <b>Seminar:</b>  | HiFi-GAN | [notebook](seminars/seminar08/seminar8.ipynb) |
+| 9 | <b>Lecture:</b> | Voice Conversion: CycleGAN-VC, StarGAN-VC, AutoVC, Seed-VC, Singing Voice Conversion | [slides](lectures/lecture09_DLAudio2026.pdf)  |
 |   | <b>Seminar:</b> |  | [notebook](seminars/seminar09/seminar.ipynb)  |
 | 10 | <b>Lecture:</b> | Text-to-speech 3: Codec Models (RVQ, SoundStream, Encodec, Mimi), VQ-VAE, VALL-E, TortoiseTTS, NaturalSpeech, CozyVoice, FishSpeech | [slides](lectures/lecture10_DLAudio2026.pdf)  |
 |    | <b>Seminar:</b> | Encodec, Soundstream, Residual Vector Quantization | [notebook](seminars/seminar10/seminar.ipynb)  |
