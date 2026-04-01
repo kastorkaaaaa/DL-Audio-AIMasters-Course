@@ -1,0 +1,1 @@
+[jonathanbgn Wav2Vec2 blogpost](https://jonathanbgn.com/2021/09/30/illustrated-wav2vec-2.html#:~:text=wav2vec%202.0%E2%80%99s%20original%20paper)
